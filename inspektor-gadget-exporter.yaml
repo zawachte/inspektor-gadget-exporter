@@ -1,0 +1,131 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: inspektor-gadget-exporter
+  namespace: default
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: inspektor-gadget-exporter
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - namespaces
+  - nodes
+  - pods
+  verbs:
+  - get
+  - watch
+  - list
+  - update
+- apiGroups:
+  - ""
+  resources:
+  - pods/exec
+  verbs:
+  - get
+  - watch
+  - list
+  - update
+  - create  
+- apiGroups:
+  - ""
+  resources:
+  - services
+  verbs:
+  - list
+- apiGroups:
+  - gadget.kinvolk.io
+  resources:
+  - traces
+  - traces/status
+  verbs:
+  - delete
+  - deletecollection
+  - get
+  - list
+  - patch
+  - create
+  - update
+  - watch
+- apiGroups:
+  - '*'
+  resources:
+  - deployments
+  - replicasets
+  - statefulsets
+  - daemonsets
+  - jobs
+  - cronjobs
+  - replicationcontrollers
+  verbs:
+  - get
+- apiGroups:
+  - security-profiles-operator.x-k8s.io
+  resources:
+  - seccompprofiles
+  verbs:
+  - list
+  - watch
+  - create
+- apiGroups:
+  - security.openshift.io
+  resourceNames:
+  - privileged
+  resources:
+  - securitycontextconstraints
+  verbs:
+  - use
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: inspektor-gadget-exporter
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: inspektor-gadget-exporter
+subjects:
+- kind: ServiceAccount
+  name: inspektor-gadget-exporter
+  namespace: default
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: inspektor-gadget-exporter-deployment
+  labels:
+    app: inspektor-gadget-exporter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: inspektor-gadget-exporter
+  template:
+    metadata:
+      labels:
+        app: inspektor-gadget-exporter
+    spec:
+      serviceAccount: inspektor-gadget-exporter
+      serviceAccountName: inspektor-gadget-exporter
+      containers:
+      - name: inspektor-gadget-exporter
+        image: ghcr.io/zawachte/inspektor-gadget-exporter:v0.0.1
+        ports:
+        - containerPort: 2112
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: inspektor-gadget-exporter
+  namespace: default
+spec:
+  ports:
+  - port: 2112
+    protocol: TCP
+  selector:
+    app: inspektor-gadget-exporter
+  type: ClusterIP

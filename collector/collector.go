@@ -38,7 +38,8 @@ var (
 
 // CollectorOptions
 type CollectorOptions struct {
-	Logger *zap.Logger
+	Logger              *zap.Logger
+	KubernetesNamespace string
 }
 
 // Collector
@@ -54,8 +55,9 @@ type GadgetCollector struct {
 
 // collector
 type collector struct {
-	gadgetCollectors []GadgetCollector
-	logger           *zap.Logger
+	gadgetCollectors    []GadgetCollector
+	logger              *zap.Logger
+	kubernetesNamespace string
 }
 
 // NewCollector
@@ -110,8 +112,9 @@ func NewCollector(options CollectorOptions) (Collector, error) {
 	}
 
 	return &collector{
-		gadgetCollectors: gadgetCollectors,
-		logger:           options.Logger}, nil
+		gadgetCollectors:    gadgetCollectors,
+		logger:              options.Logger,
+		kubernetesNamespace: options.KubernetesNamespace}, nil
 }
 
 // Collect
@@ -122,7 +125,12 @@ func (c *collector) Collect(ctx context.Context) error {
 	for _, gc := range c.gadgetCollectors {
 
 		var commonFlags utils.CommonFlags
-		commonFlags.AllNamespaces = true
+
+		if c.kubernetesNamespace == "" {
+			commonFlags.AllNamespaces = true
+		} else {
+			commonFlags.Namespace = c.kubernetesNamespace
+		}
 
 		config := &utils.TraceConfig{
 			GadgetName:       gc.GadgetName,

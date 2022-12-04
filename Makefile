@@ -48,7 +48,7 @@ deploy:
 	kubectl apply -f config/inspector-gadget-exporter.yaml
 
 # Build the docker image
-docker-build: manager-controlplane
+docker-build: binary
 	docker build . -t ${IMG}
 
 # Push the docker image

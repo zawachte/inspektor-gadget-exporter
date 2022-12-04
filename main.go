@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"net/http"
 	"os"
@@ -25,6 +26,13 @@ func init() {
 }
 
 func main() {
+	var metricsAddr string
+	var kubernetesNamespace string
+
+	flag.StringVar(&metricsAddr, "metrics-addr", ":2112", "The address the metric endpoint binds to.")
+	flag.StringVar(&kubernetesNamespace, "kubernetes-namespace", "", "The kubernetes namespace which inspektor-gadget will launch gadgets against.")
+
+	flag.Parse()
 
 	ctx := context.Background()
 
@@ -34,7 +42,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	collect, err := collector.NewCollector(collector.CollectorOptions{Logger: logger})
+	logger.Sugar().Info("Starting up inspektor-gadget-exporter...")
+
+	collect, err := collector.NewCollector(collector.CollectorOptions{
+		Logger:              logger,
+		KubernetesNamespace: kubernetesNamespace,
+	})
 	if err != nil {
 		logger.Sugar().Errorw("error creating collector", "error", err.Error())
 		os.Exit(1)
@@ -47,7 +60,7 @@ func main() {
 	}
 
 	http.Handle("/metrics", promhttp.Handler())
-	go http.ListenAndServe(":2112", nil)
+	go http.ListenAndServe(metricsAddr, nil)
 
 	err = collect.Collect(ctx)
 	if err != nil {
@@ -58,7 +71,11 @@ func main() {
 
 func cleanTracesFromPreviousRun(ctx context.Context) error {
 
-	config := ctrl.GetConfigOrDie()
+	config, err := ctrl.GetConfig()
+	if err != nil {
+		return err
+	}
+
 	cli, err := client.New(config, client.Options{Scheme: scheme.Scheme})
 	if err != nil {
 		return err
