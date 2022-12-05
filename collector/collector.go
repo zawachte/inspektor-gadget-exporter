@@ -117,9 +117,8 @@ func NewCollector(options CollectorOptions) (Collector, error) {
 		kubernetesNamespace: options.KubernetesNamespace}, nil
 }
 
-// Collect
+// Collect launches the configured gadgets with callbacks to update prometheus/openmetrics metrics accordingly.
 func (c *collector) Collect(ctx context.Context) error {
-
 	var wg sync.WaitGroup
 
 	for _, gc := range c.gadgetCollectors {
